@@ -1,5 +1,5 @@
 from models import FloorplanState
-from gallery import generate_turn_options
+from gallery import generate_turn_options, add_track
 
 def run_mvp_draft_loop():
     state = FloorplanState(max_rooms=5)

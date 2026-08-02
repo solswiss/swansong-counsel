@@ -1,6 +1,7 @@
 from pydantic_ai import Agent
+from google import genai
+
 from models import DraftOptions, FloorplanState
-from db import TrackRecord
 
 PROMPT = """
 You are the Sound Architect for a music recommendation and discovery algorithm. Your role is to analyze the floorplan history and generate 3 strategic track choices based on a list of songs.
@@ -23,10 +24,12 @@ For each track, assign realistic numeric audio features matching the target trac
 
 # Initialize lightweight agent (e.g., using Ollama locally or free OpenAI/Groq tier)
 agent = Agent(
-    'openai:gpt-4o-mini',
+    'google:gemini-2.5-flash',
     output_type=DraftOptions,
     system_prompt=(PROMPT)
 )
+client = genai.Client()
+
 
 def generate_turn_options(state: FloorplanState) -> DraftOptions:
     # 1. Format the current state context
@@ -49,29 +52,30 @@ def generate_turn_options(state: FloorplanState) -> DraftOptions:
     result = agent.run_sync(prompt)
     return result.output
 
-def generate_track_lore(title: str, artist: str, genre: str, valence: float, energy: float) -> str:
+def generate_track_lore(title: str, artist: str, genre: str, valence: float, energy: float, acousticness: float, instrumentalness: float) -> str:
     prompt = f"""
-    Write a 1-sentence atmospheric description for a room based on a song.
-    Track: '{title}' by {artist} ({genre}).
-    Mood profile: Valence={valence} (0=Dark, 1=Bright), Energy={energy} (0=Calm, 1=Aggressive).
-    Output Style: Cryptic, evocative, e.g., 'A corridor lit by humming neon where time seems to slow down'.
-    """
-    # Call your local LLM / lightweight agent
-    return llm.generate(prompt)
+    You are the narrative architect for an estate. Your task is to write a single-sentence description of a room inspired by a track's audio profile.
 
-def build_audio_vector(track: TrackRecord) -> list[float]:
-    """Normalize tempo/loudness and construct 9-D vector array."""
-    tempo_norm = min(max(track.tempo / 200.0, 0.0), 1.0)
-    loudness_norm = min(max((track.loudness + 60.0) / 60.0, 0.0), 1.0)
+    Track Attributes:
+    - Title: "{title}" by {artist}
+    - Genres: {genre}
+    - Mood/Valence: {valence} (Scale: 0.0 = dark/somber/grief, 1.0 = bright/serene/triumphant)
+    - Energy: Energy={energy} (0.0=still/empty, 1.0=crowded/aesthetically loud)
+    - Texture: Acousticness={acousticness} (0-1 scale; high=organic/natural, low=synthetic/glass/metal), Instrumentalness={instrumentalness} (0-1 scale; high=wordless/ambient, low=vocal/echoing)
+
+    Spatial Concept:
+    In this estate, a "room" is any distinct space. This includes indoor chambers and passages, subterranean vaults, open-air grounds, etc..
+
+    ### Writing Guidelines:
+    1. Output EXACTLY one evocative sentence describing a location, chamber, or outdoor zone in the estate layout.
+    2. DO NOT mention musical terms. Translate audio parameters directly into physical architecture, flora, light, acoustics, and atmosphere.
+    3. Align the space type with Genre & Texture. Example rooms:
+    - High Acousticness + High Energy / Bright Valence -> Sunlit courtyard, stone fountain plaza, rustling birch grove, hedge maze.
+    - High Acousticness + Low Energy / Dark Valence -> Overgrown ivy garden, mossy stone well, rain-drenched terrace, ancient gazebo.
+    - Synthetic/Electronic + Low Energy -> Neon-lit server passage, damp cellar, glass observation deck, flickering terminal bay.
+    - Synthetic/Electronic + High Energy -> Industrial gear room, hum of subterranean generators, illuminated catwalk above a dark floor.
+
+    Generate the single-sentence lore snippet:
+    """
+    return client.interactions.create(model="gemini-2.5-flash",input=prompt).output_text
     
-    return [
-        float(track.valence),
-        float(track.energy),
-        tempo_norm,
-        float(track.danceability),
-        float(track.acousticness),
-        float(track.instrumentalness),
-        float(track.speechiness),
-        loudness_norm,
-        float(track.mode)
-    ]
