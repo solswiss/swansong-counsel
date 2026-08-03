@@ -46,6 +46,12 @@ class TrackDatabase:
         response = self.supabase.table("tracks").select("isrc").eq("isrc", isrc).execute()
         return response.count > 0 if response.count is not None else len(response.data) > 0    
 
+    def inc_times_offered(self, isrc: str):
+        self.supabase.rpc("increment_times_offered", {"target_isrc": isrc}).execute()
+
+    def inc_times_chosen(self, isrc: str):
+        self.supabase.rpc("increment_times_chosen", {"target_isrc": isrc}).execute()
+
     def insert_track(self, track: TrackRecord) -> Optional[list[dict[str, Any]]]:
         """Insert a single track using Pydantic model dict export."""
         if self.track_exists(track.isrc):
@@ -56,6 +62,11 @@ class TrackDatabase:
         response = self.supabase.table("tracks").insert(data).execute()
         return response.data #type: ignore
 
+    def fetch_tracks(self, isrc_list: list[str]) -> list[TrackRecord]:
+        """Retrieve all tracks with matching ISRC from the catalog."""
+        response = self.supabase.table("tracks").select("*").in_("isrc", isrc_list)
+        return [TrackRecord(**row) for row in response.data] # type: ignore
+    
     def fetch_catalog(self) -> list[TrackRecord]:
         """Retrieve all tracks from the catalog."""
         response = self.supabase.table("tracks").select("*").execute()
@@ -64,7 +75,7 @@ class TrackDatabase:
     def create_track(self, isrc: str):
         """Add new track by ISRC to catalog."""
         if self.track_exists(isrc):
-            return
+            raise Exception("Track already exists.")
 
         try:
             track_req = f"https://api.reccobeats.com/v1/track?ids={isrc}"
@@ -73,21 +84,26 @@ class TrackDatabase:
             }
             track_res = json.loads(requests.request("GET", track_req, headers=headers).text)["content"][0] #type: ignore
             recco_id = track_res["id"]
+            print("[DEBUG] reccobeats 1")
 
             detail_req = f"https://api.reccobeats.com/v1/track/{recco_id}/audio-features"
             detail_res = json.loads(requests.request("GET", detail_req, headers=headers).text) #type: ignore
+            print("[DEBUG] reccobeats 2")
 
             req = f"https://musicbrainz.org/ws/2/isrc/{isrc}?fmt=json"
             data = json.loads(requests.request("GET", req).text)["recordings"][0]
             mbid = data["id"]
             year = int(data["first-release-date"].split("-",1)[0])
+            print("[DEBUG] musicbrainz 1")
 
             req = f"https://musicbrainz.org/ws/2/recording/{mbid}?inc=genres&fmt=json"
             data = json.loads(requests.request("GET", req).text)
-            genres = []
-            if data["genres"]:
-                genres = [i.name for i in data["genres"]]
-            
+            print("[DEBUG] musicbrainz 2")
+            genres = [i.name for i in data["genres"]] or []
+
+            youtube = search_youtube(isrc, data["trackTitle"], data["artists"][0]["name"], YOUTUBE_KEY)
+            print("[DEBUG] youtube")
+
             data = track_res | detail_res
             track = TrackRecord(
                 isrc=isrc,
@@ -108,7 +124,7 @@ class TrackDatabase:
                 speechiness=data["speechiness"],
                 tempo=data["tempo"],
                 valence=data["valence"],
-                youtube_id=search_youtube(isrc, data["trackTitle"], data["artist"][0], YOUTUBE_KEY)
+                youtube_id=youtube
             )
             track.audio_vector = build_audio_vector(track)
             track.lore = generate_track_lore(
@@ -124,7 +140,7 @@ class TrackDatabase:
             print("Adding track ",track.isrc)
             if self.insert_track(track) is None:
                 return None
-            return TrackTile.model_validate(track)
+            return TrackTile.model_validate(track.model_dump())
         except Exception as e:
             print("Error adding track:",e)
             return None

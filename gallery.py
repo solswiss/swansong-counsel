@@ -7,6 +7,7 @@ class Gallery:
     def __init__(self, db: TrackDatabase, model_name: str = "google:gemini-2.5-flash"):
         self.db = db
         self.history: list[str] = []
+        self.history_prompt: str = ""
         
         self.agent = Agent(
             model_name,
@@ -115,15 +116,6 @@ class Gallery:
 
     def _build_system_prompt(self, ctx: RunContext[TrackDatabase]) -> str:
         """Dynamic system prompt injected automatically on agent run."""
-        catalog: list[TrackRecord] = ctx.deps.fetch_catalog()
-        #TODO: use indexes
-        catalog_summary = "\n".join([
-            f"- ID: {t.isrc} | '{t.title}' by {', '.join(t.artist)} | Genre: {', '.join(t.genre)} | "
-            f"Valence: {t.valence}, Energy: {t.energy}, Acousticness: {t.acousticness}, Danceability: {t.danceability}, Instrumentalness: {t.instrumentalness}, Temp: {t.tempo}"
-            for t in catalog
-        ])
-
-        #TODO: write reasoning formatting
         return f"""
 You are the architect for a music recommendation and discovery algorithm. 
 Your role is to analyze a song sequence and generate 3 strategic track choices based on it.
@@ -136,17 +128,24 @@ After using a tool, recommend one of the tracks based on the sequence.
 4. `query_sail`: Genre shift with preserved tempo and mood.
 5. `query_diamondus`: Wildcard outlier.
 
-Rules:
+## Rules
 1. Present exactly 3 unique track options, all from the music catalog
 2. Option 1 must be a "Twin"
 
-Output:
-- Format each track as a `DraftOption` with the corresponding isrc in `isrc` and strategy used in `observation`
-- Write your recommendation reasoning in `reasoning`. 
-
-Music Catalog:
-{catalog_summary}
+### Output
+Format each track as a `DraftOption` with the corresponding isrc in `isrc` and strategy used in `observation`
+#### Reasoning
+Write your recommendation reasoning in `reasoning` in the format:
+- 1 sentence about your sequence analysis and strategy choice.
+- 1 bulleted sentence for each track about the strategy used and why you chose that track out of the tracks given to you.
 """
+
+    def insert_draft(self, isrc: str) -> bool:
+        if isrc not in self.history:
+            self.history.append(isrc)
+            return True
+        print("X ISRC already in Agent's history")
+        return False
 
     def transform_drafts(self, agent_drafts: AgentDraftOptions) -> DraftOptions:
         opts: list[TrackTile] = []
@@ -171,31 +170,27 @@ Music Catalog:
 
     def generate_turn_options(self, state: FloorplanState):
         if not state.drafted_rooms:
-            prompt = "The song sequence is empty. Provide 3 initial songs across different genres."
+            print("X State history is empty - Agent cannot start drafting")
+            return None #prompt = "The song sequence is empty. Use strategies to provide 3 initial songs across different genres."
         else:
-            last_room_isrc = state.drafted_rooms[-1].isrc
-            last_room = self.db.get_track_record(last_room_isrc)
-            if last_room is None:
-                print("X last_room is None")
-                exit(1)
-            history = [f"{r.title} (','.join{r.genre})" for r in state.drafted_rooms]
-            
-            prompt = f"""
-            Song Sequence: { ' -> '.join(history) }
-            Last Placed Room: {last_room.title} by {last_room.artist} 
-            (Tempo: {last_room.tempo}, Energy: {last_room.energy}, Valence: {last_room.valence})
-
-            Generate 3 strategic next room choices.
-            """
-        result = self.agent.run_sync(prompt, deps=self.db)
-        for tile in result.output.options:
-            self.history.append(tile.isrc)
-        return self.transform_drafts(result.output)
-        # try:
-        #     result = self.agent.run_sync(prompt, deps=self.db)
-        #     for tile in result.output.options:
-        #         self.history.append(tile.isrc)
-        #     return self.transform_drafts(result.output)
-        # except Exception as e:
-        #     print("Error generating turn options:",e)
-        #     return None
+            t = self.db.get_track_record(self.history[-1])
+            if t is None:
+                print("X last room is not found")
+                return None
+            self.history_prompt += f"- ID: {t.isrc} | '{t.title}' by {', '.join(t.artist)} | Genre: {', '.join(t.genre)} | Valence: {t.valence}, Energy: {t.energy}, Acousticness: {t.acousticness}, Danceability: {t.danceability}, Instrumentalness: {t.instrumentalness}, Temp: {t.tempo}\n"
+            prompt = self.history_prompt + "\nGenerate 3 strategic next room choices."
+            #print("[DEBUG] AGENT'S HISTORY PROMPT")
+            #print(prompt)
+        try:
+            result = self.agent.run_sync(prompt, deps=self.db)
+            for tile in result.output.options:
+                self.history.append(tile.isrc)
+                try: 
+                    self.db.inc_times_offered(tile.isrc)
+                except:
+                    print("X Error inc_times_offered")
+            #print("[DEBUG] AGENT'S HISTORY:",self.history)
+            return self.transform_drafts(result.output)
+        except Exception as e:
+            print("Error generating turn options:",e)
+            return None
