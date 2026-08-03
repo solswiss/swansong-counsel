@@ -1,9 +1,8 @@
-from typing import List
 from db import TrackDatabase, TrackRecord
 from helper import build_audio_vector
 
 
-SEED_TRACKS: List[TrackRecord] = [
+SEED_TRACKS: list[TrackRecord] = [
     # =========================================================================
     # GENRE 1: Synthwave / Darkwave (Cohesive Group - 4 tracks)
     # =========================================================================
@@ -544,7 +543,7 @@ def seed_database():
     db = TrackDatabase()
     print("Seeding Supabase catalog...")
     for i, track in enumerate(SEED_TRACKS):
-        track_id = track.isrc+str(i)
+        track_id = track.isrc+str(i+30)
         track.isrc = track.mbid = track.recco_id = track.spotify_id = track_id
         track.audio_vector = build_audio_vector(track)
         db.insert_track(track)

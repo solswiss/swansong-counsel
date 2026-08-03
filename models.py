@@ -1,7 +1,7 @@
 import json
 
 from pydantic import BaseModel, Field, field_validator
-from typing import List, Literal, Union
+from typing import Literal, Union
 
 
 class TrackRecord(BaseModel):
@@ -9,11 +9,13 @@ class TrackRecord(BaseModel):
     mbid: str = "demo"
     recco_id: str = "demo"
     spotify_id: str = "demo"
+
     title: str
-    artist: List[str]
-    genre: List[str]
+    artist: list[str]
+    genre: list[str]
     year: int
     duration: int
+
     acousticness: float
     danceability: float
     energy: float
@@ -23,7 +25,9 @@ class TrackRecord(BaseModel):
     speechiness: float
     tempo: float
     valence: float
-    audio_vector: List[float] = []
+
+    audio_vector: list[float] = []
+
     lore: str = ""
     youtube_id: str | None = None
     times_offered: int = 0
@@ -31,7 +35,7 @@ class TrackRecord(BaseModel):
 
     @field_validator("audio_vector", mode="before")
     @classmethod
-    def parse_vector_string(cls, v: Union[str, List[float]]) -> List[float]:
+    def parse_vector_string(cls, v: Union[str, list[float]]) -> list[float]:
         if isinstance(v, str):
             return json.loads(v)
         return v
@@ -42,23 +46,24 @@ Strategy = Literal[
     "Cross",
     "Farmer",
     "Sail",
-    "Diamondus"
+    "Diamondus",
+    "Star"
 ]
 
 class TrackTile(BaseModel):
     isrc: str
     title: str
-    artist: List[str]
-    genre: List[str]
+    artist: list[str]
+    genre: list[str]
     lore: str
-    youtube_id: str | None
-    observation: Strategy = Field(..., description="The Recommendation Strategy for this song.")
+    youtube_id: str | None = None
+    observation: Strategy = Field("Star", description="The Recommendation Strategy for this song.")
 
 # class T(BaseModel):
 #     isrc: str
 #     title: str
-#     artist: List[str]
-#     genre: List[str]
+#     artist: list[str]
+#     genre: list[str]
 #     year: datetime
 #     acousticness: float
 #     danceability: float
@@ -72,13 +77,21 @@ class TrackTile(BaseModel):
 #     observation: Strategy = Field(..., description="The Recommendation Strategy for this song.")
 #     lore: str = Field(..., description="Write a 1-sentence atmospheric description for a room based on this song in a cryptic and evocative style, e.g., 'A corridor lit by humming neon where time seems to slow down'.")
 
+class AgentDraftOptions(BaseModel):
+    class DraftTile(BaseModel):
+        isrc: str
+        observation: Strategy
+    
+    reasoning: str = Field(..., description="Agent's evaluation of the board and strategy selection")
+    options: list[DraftTile] = Field(..., description="list of track IDs", min_length=3, max_length=3)
+
 class DraftOptions(BaseModel):
     reasoning: str = Field(..., description="Agent's evaluation of the board and strategy selection")
-    options: List[TrackTile] = Field(..., min_length=3, max_length=3)
+    options: list[TrackTile] = []
 
 class FloorplanState(BaseModel):
     max_rooms: int = 5
-    drafted_rooms: List[TrackTile] = []
+    drafted_rooms: list[TrackTile] = []
     
     @property
     def current_turn(self) -> int:

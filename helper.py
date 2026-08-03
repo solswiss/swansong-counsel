@@ -1,6 +1,5 @@
 import requests
 from typing import Any
-from typing import List
 from google import genai
 
 from models import TrackRecord
@@ -8,7 +7,7 @@ from models import TrackRecord
 
 client = genai.Client()
 
-def generate_track_lore(title: str, artist: List[str], genre: List[str], valence: float, energy: float, acousticness: float, instrumentalness: float) -> str | None:
+def generate_track_lore(title: str, artist: list[str], genre: list[str], valence: float, energy: float, acousticness: float, instrumentalness: float) -> str | None:
     """Generate the lore clue for a track."""
     prompt = f"""
     You are the narrative architect for an estate. Your task is to write a single-sentence description of a room inspired by a track's audio profile.
