@@ -1,6 +1,7 @@
 from models import FloorplanState
 from db import TrackDatabase
 from gallery import Gallery
+from helper import build_estate_title
 
 def run_mvp_draft_loop(db: TrackDatabase):
     state = FloorplanState(max_rooms=3)
@@ -31,6 +32,8 @@ def run_mvp_draft_loop(db: TrackDatabase):
         draft_turn = gallery.generate_turn_options(state)
         if draft_turn is None:
             print("Ending turn early...")
+            if input("Return to continue or type 'end' to end").lower() == "end":
+                break
             continue
         print(f"Architect's Strategy\n{draft_turn.reasoning}\n")
         
@@ -59,8 +62,10 @@ def run_mvp_draft_loop(db: TrackDatabase):
 
 
     print("\n=== FINAL FLOORPLAN SEQUENCE ===")
+    print(build_estate_title([db.get_track_record(i.isrc) for i in state.drafted_rooms]))
     for idx, room in enumerate(state.drafted_rooms, 1):
         print(f"[{room.isrc}] Room {idx}: {room.title} - {room.artist} | {', '.join(room.genre)}")
+    print()
 
 uc = "0"
 print("Starting system, please wait!")
@@ -83,8 +88,7 @@ while uc != "9":
                 print("Failed to register new Floorplan.")
             else:
                 print("Added new Floorplan.")
-        except Exception as e:
-            print("Failed to register new Floorplan:",e)
+        finally:pass
     elif uc == "2":
         cat = db.fetch_catalog()
         for room in cat:

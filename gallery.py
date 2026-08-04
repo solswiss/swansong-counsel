@@ -4,7 +4,7 @@ from models import AgentDraftOptions, DraftOptions, TrackTile, FloorplanState, T
 from db import TrackDatabase
 
 class Gallery:
-    def __init__(self, db: TrackDatabase, model_name: str = "google:gemini-2.5-flash"):
+    def __init__(self, db: TrackDatabase, model_name: str = "google:gemini-3.6-flash"):
         self.db = db
         self.history: list[str] = []
         self.history_prompt: str = ""

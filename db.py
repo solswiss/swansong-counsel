@@ -82,29 +82,40 @@ class TrackDatabase:
             headers = {
                 'Accept':'application/json'
             }
-            track_res = json.loads(requests.request("GET", track_req, headers=headers).text)["content"][0] #type: ignore
-            recco_id = track_res["id"]
-            print("[DEBUG] reccobeats 1")
+            try:
+                track_res = json.loads(requests.request("GET", track_req, headers=headers).text)["content"][0] #type: ignore
+                recco_id = track_res["id"]
+            except:
+                raise Exception("Track not found by Reccobeats")
+            
+            try:
+                detail_req = f"https://api.reccobeats.com/v1/track/{recco_id}/audio-features"
+                detail_res = json.loads(requests.request("GET", detail_req, headers=headers).text) #type: ignore
+            except:
+               raise Exception("Track detail not found by Reccobeats")
 
-            detail_req = f"https://api.reccobeats.com/v1/track/{recco_id}/audio-features"
-            detail_res = json.loads(requests.request("GET", detail_req, headers=headers).text) #type: ignore
-            print("[DEBUG] reccobeats 2")
-
-            req = f"https://musicbrainz.org/ws/2/isrc/{isrc}?fmt=json"
-            data = json.loads(requests.request("GET", req).text)["recordings"][0]
-            mbid = data["id"]
-            year = int(data["first-release-date"].split("-",1)[0])
-            print("[DEBUG] musicbrainz 1")
-
-            req = f"https://musicbrainz.org/ws/2/recording/{mbid}?inc=genres&fmt=json"
-            data = json.loads(requests.request("GET", req).text)
-            print("[DEBUG] musicbrainz 2")
-            genres = [i.name for i in data["genres"]] or []
-
-            youtube = search_youtube(isrc, data["trackTitle"], data["artists"][0]["name"], YOUTUBE_KEY)
-            print("[DEBUG] youtube")
+            try:
+                req = f"https://musicbrainz.org/ws/2/isrc/{isrc}?fmt=json"
+                data = json.loads(requests.request("GET", req).text)["recordings"][0]
+                mbid = data["id"]
+                year = int(data["first-release-date"].split("-",1)[0])
+            except:
+                raise Exception("Track (ISRC) not found by MusicBrainz")
+            
+            try:
+                req = f"https://musicbrainz.org/ws/2/recording/{mbid}?inc=genres&fmt=json"
+                data = json.loads(requests.request("GET", req).text)
+                genres = [i["name"] for i in data["genres"]] or []
+            except:
+                raise Exception("Track (MBID) not found by MusicBrainz")
 
             data = track_res | detail_res
+            
+            try:
+                youtube = search_youtube(isrc, data["trackTitle"], data["artists"][0]["name"], YOUTUBE_KEY)
+            except:
+                raise Exception("Track not found by YouTube")
+
             track = TrackRecord(
                 isrc=isrc,
                 mbid=mbid,
@@ -141,10 +152,8 @@ class TrackDatabase:
             if self.insert_track(track) is None:
                 return None
             return TrackTile.model_validate(track.model_dump())
-        except Exception as e:
-            print("Error adding track:",e)
-            return None
-
+        finally:pass
+        
     def query_twin(self, vector: list[float], exclude_ids: list[str] = [], limit: int = 5) -> list[str]:
         res = self.supabase.rpc("match_twin", {"query_embedding": vector, "exclude_ids": exclude_ids, "match_count": limit}).execute()
         if res.data is None:
