@@ -152,7 +152,8 @@ class TrackDatabase:
             if self.insert_track(track) is None:
                 return None
             return TrackTile.model_validate(track.model_dump())
-        finally:pass
+        except Exception as e:
+            print("Failed to register new Floorplan:",e)
         
     def query_twin(self, vector: list[float], exclude_ids: list[str] = [], limit: int = 5) -> list[str]:
         res = self.supabase.rpc("match_twin", {"query_embedding": vector, "exclude_ids": exclude_ids, "match_count": limit}).execute()

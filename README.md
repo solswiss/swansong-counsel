@@ -43,7 +43,7 @@ python app.py
 ## Sample Interactions
 The AI Agent is also known as Architect. `[DEBUG]` messages can be safely ignored but may be of interest to inquisitive users. Note that the number of turns is very limited due to API rate limits and less so on catalog size. Also note that the catalog contains 30 demo tracks and at least 2 real/non-demo tracks.   
   
-The program connects to the database and User sees menu display and will input a choice
+The program connects to the database and User sees menu display and will input a choice.
 ```
 Starting system, please wait!
 === MENU ===
@@ -54,16 +54,16 @@ Starting system, please wait!
 Type your choice: 
 ```
 ### Draft Floorplan
-User types 0 to begin recommendation loop
+User inputs `0` to begin recommendation loop.
 ```
 Type your choice: 0
 ```
-User chooses to pass `demo0` (see the [demo catalog](https://supabase.com/dashboard/project/mwlkbnwihhhowrghywqo/editor/18609))
+User chooses to pass `demo0`.
 ```
 --- STARTING FLOORPLAN DRAFT ---
 Choose a song to start. Pass its ISRC: demo0 
 ```
-AI Agent explains its reasoning and strategies used based on the singular initial song, ISRC `demo0`, for the 3 options and User selects option 3
+AI Agent explains its reasoning and strategies used based on the singular initial song, ISRC `demo0`, for the 3 options and User selects option 3.
 ```
 --- TURN 1/3 ---
 [DEBUG] CURRENT FLOORPLAN
@@ -87,7 +87,7 @@ To build a compelling progression from 'Corridor of Cyan', I analyzed its high e
 Select a room (1-3) or type 'end' to finish early: 2
 Drafted: Lament for the West Wing
 ```
-AI Agent explains its choices with logic drawing from metadata of the full sequence (both the latest and initial song) and User selects option 2
+AI Agent explains its choices with logic drawing from metadata of the full sequence (both the latest and initial song) and User selects option 2.
 ```
 --- TURN 2/3 ---
 [DEBUG] CURRENT FLOORPLAN
@@ -112,7 +112,7 @@ After transitioning from energetic synthwave to serene choral baroque, the seque
 Select a room (1-3) or type 'end' to finish early: 2
 Drafted: Static in the Conservatory
 ```
-The last turn ends and User is presented with the final sequence of songs and a title of the sequence as an estate, as it were
+The last turn ends and User is presented with the final sequence of songs and a title of the sequence as an estate, as it were.
 ```
 === FINAL FLOORPLAN SEQUENCE ===
 Mercurial Cottage
@@ -121,7 +121,7 @@ Mercurial Cottage
 [demo9] Room 3: Static in the Conservatory - ['Echoes of Holly'] | ambient
 ```
 ### Add Floorplan to Draft Pool
-User adds a song ([GBDUW2300080] Touch - Daft Punk) and the database successfully receives it
+User adds a song (ISRC `GBDUW2300080` = Touch - Daft Punk) and the database successfully receives it.
 ```
 Type your choice: 1
 Track ISRC: GBDUW2300080
@@ -129,7 +129,7 @@ Adding track  GBDUW2300080
 Added new Floorplan.
 ```
 ### Open (non-demo) Draft Pool
-User sees display of the real/non-demo songs in the catalog (2/32)
+User sees display of the real/non-demo songs in the catalog.
 ```
 Type your choice: 2
 [USAT21602338] Sweet Talk - ['Saint Motel'] | 

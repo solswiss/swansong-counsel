@@ -88,7 +88,8 @@ while uc != "9":
                 print("Failed to register new Floorplan.")
             else:
                 print("Added new Floorplan.")
-        finally:pass
+        except Exception as e:
+            print("Failed to register new Floorplan:",e)
     elif uc == "2":
         cat = db.fetch_catalog()
         for room in cat:
